@@ -39,6 +39,34 @@ def calculate_sentiment(review):
     sentiment = sia.polarity_scores(review)
     return sentiment['compound'] # Returns a score between -1 (negative) and 1 (positive)
 
+# Define a function to categorize sentiment using both the sentiment score and the review rating
+def categorize_sentiment(score, rating):
+    # Define sentiment categories based on score and rating
+    if score > 0.05:
+        # Positive sentiment score
+        return 'Positive' if rating >= 4 else 'Mixed Positive' if rating == 3 else 'Mixed Negative'
+
+    elif score < -0.05:
+        # Negative sentiment score
+        return 'Negative' if rating <= 2 else 'Mixed Negative' if rating == 3 else 'Mixed Positive'
+    
+    else:
+        # Neutral sentiment score
+        return 'Positive' if rating >= 4 else 'Negative' if rating <= 2 else 'Neutral'
+
+# Define a function to bucket sentiment scores into text ranges
+def sentiment_bucket(score):
+    # Bucket sentiment score ranges
+    if score >= 0.5:
+        return '0.5 to 1.0'  # Strongly positive sentiment
+    elif score >= 0.0:
+        return '0.0 to 0.49'  # Mildly positive sentiment
+    elif score >= -0.5:
+        return '-0.49 to 0.0'  # Mildly negative sentiment
+    else:
+        return '-1.0 to -0.5'  # Strongly negative sentiment
+
+
 # Fetch the customer reviews data from the SQL database 
 customer_reviews_df = fetch_data_from_sql()
 # print(customer_reviews_df)
@@ -46,5 +74,15 @@ customer_reviews_df = fetch_data_from_sql()
 # Calculate sentiment score for each review and add it to the dataframe
 customer_reviews_df['SentimentScore'] = customer_reviews_df['ReviewText'].apply(calculate_sentiment)
 
-# Print the dataframe with sentiment scores
-print(customer_reviews_df)
+# Apply sentiment categorization using both text and rating
+customer_reviews_df['SentimentCategory'] = customer_reviews_df.apply(
+    lambda row: categorize_sentiment(row['SentimentScore'], row['Rating']), axis=1)
+
+# Apply sentiment bucketing to categorize scores into defined ranges
+customer_reviews_df['SentimentBucket'] = customer_reviews_df['SentimentScore'].apply(sentiment_bucket)
+
+# Display the first few rows of the dataframe with sentiment scores, categories, and buckets
+print(customer_reviews_df.head())
+
+# Save the DataFrame to a new CSV file
+customer_reviews_df.to_csv('fact_customer_reviews_with_sentiment.csv', index=False)
